@@ -12,41 +12,73 @@ int main() {
     struct sockaddr_in address;
     int addrlen = sizeof(address);
     char buffer[BUFFER_SIZE];
-    char *message;
 
-    // 1. Create socket
+    // Create socket
     server_fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (server_fd < 0) {
+        perror("Socket failed");
+        exit(EXIT_FAILURE);
+    }
 
-    // 2. Define address
+    // Configure address
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = INADDR_ANY;
-    address.sin_port = htons(PORT); 
-    
-    // 3. Bind socket
-    bind(server_fd, (struct sockaddr *)&address, sizeof(address));
-  
-    // 4. Listen for connections
-    listen(server_fd, 3);
+    address.sin_port = htons(PORT);
 
-    printf("Server waiting on port %d...\n", PORT);
-while(1){
-    mainset(buffer,0,size);
-    // 5. Accept connection
-    new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen);
+    // Bind socket
+    if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
+        perror("Bind failed");
+        close(server_fd);
+        exit(EXIT_FAILURE);
+    }
 
-    // 6. Read from client
-    
-    read(new_socket, buffer, 1024); 
-    strcmp((buffer,"bye")==0);
-    printf("Client: %s\n", buffer);
+    // Listen
+    if (listen(server_fd, 5) < 0) {
+        perror("Listen failed");
+        close(server_fd);
+        exit(EXIT_FAILURE);
+    }
 
-    // 7. Send response
-    
-    send(new_socket, message, strlen(message), 0);
-}
+    printf("Server is waiting on port %d...\n", PORT);
+
+    // Accept connection
+    new_socket = accept(server_fd, (struct sockaddr *)&address,
+                        (socklen_t *)&addrlen);
+
+    if (new_socket < 0) {
+        perror("Accept failed");
+        close(server_fd);
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Client connected.\n");
+
+    while (1) {
+
+        memset(buffer, 0, BUFFER_SIZE);
+
+        // Receive message
+        recv(new_socket, buffer, BUFFER_SIZE, 0);
+
+        printf("Client : %s\n", buffer);
+
+        // Check for termination
+        if (strcmp(buffer, "bye") == 0) {
+            printf("Client ended the chat.\n");
+            break;
+        }
+
+        // Send reply
+        printf("Server : ");
+        fgets(buffer, BUFFER_SIZE, stdin);
+
+        buffer[strcspn(buffer, "\n")] = '\0';
+
+        send(new_socket, buffer, strlen(buffer), 0);
+    }
+
     close(new_socket);
     close(server_fd);
 
-    return 0; 
+    return 0;
 }
-
